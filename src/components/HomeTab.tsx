@@ -1,40 +1,150 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Debate, Comment } from '../types';
+import { Question, TelegramUser } from '../types';
+import { PixelFireIcon } from './PixelIcons';
 
 interface HomeTabProps {
-  debates: Debate[];
-  username: string;
-  onVote: (debateId: number, option: 'YES' | 'NO', commentText?: string) => void;
-  onResetVote: (debateId: number) => void;
+  questions: Question[];
+  user: TelegramUser;
+  onVote: (questionId: number, option: 'YES' | 'NO', commentText?: string) => void;
+  onResetVote: (questionId: number) => void;
 }
 
-export default function HomeTab({ debates, username, onVote, onResetVote }: HomeTabProps) {
-  const liveDebates = debates.filter((d) => d.status === 'live');
-  const [selectedDebateIndex, setSelectedDebateIndex] = useState(0);
-  const activeDebate = liveDebates[selectedDebateIndex] || liveDebates[0];
+function QuestionTimer({ expiresAt }: { expiresAt: string }) {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const calculateTime = () => {
+      const difference = +new Date(expiresAt) - +new Date();
+      if (difference <= 0) {
+        setTimeLeft('EXPIRED');
+        return;
+      }
+      const hrs = Math.floor(difference / 3600000);
+      const mins = Math.floor((difference % 3600000) / 60000);
+      const secs = Math.floor((difference % 60000) / 1000);
+      
+      if (hrs > 0) {
+        setTimeLeft(`${hrs}h ${mins}m`);
+      } else {
+        setTimeLeft(`${mins}m ${secs}s`);
+      }
+    };
+    
+    calculateTime();
+    const interval = setInterval(calculateTime, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  if (timeLeft === 'EXPIRED') {
+    return (
+      <span className="inline-flex items-center bg-[#ffb4ab]/10 border border-[#ffb4ab]/30 px-2 py-0.5 text-[8px] font-bold text-[#ffb4ab] font-mono tracking-wider rounded-[2px]">
+        ⌛ EXPIRED
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center bg-[#ffdb40]/10 border border-[#ffdb40]/40 px-2 py-0.5 text-[8px] font-bold text-[#ffdb40] font-mono tracking-wider rounded-[2px] animate-pulse">
+      ⌛ {timeLeft}
+    </span>
+  );
+}
+
+function DuelPixelProgressBar({ yesPercentage }: { yesPercentage: number }) {
+  const totalBlocks = 20;
+  const yesBlocks = Math.round((yesPercentage / 100) * totalBlocks);
+
+  return (
+    <div className="h-6 w-full bg-[#131313] border-2 border-black rounded-[4px] p-0.5 flex gap-0.5 shadow-[4px_4px_0px_rgba(0,0,0,1)] relative overflow-hidden">
+      {Array.from({ length: totalBlocks }).map((_, idx) => {
+        const isYes = idx < yesBlocks;
+        return (
+          <div
+            key={idx}
+            className={`flex-1 h-full rounded-[1px] transition-all duration-300 ${
+              isYes 
+                ? 'bg-[#39ff14] shadow-[0_0_8px_rgba(57,255,20,0.4)]' 
+                : 'bg-[#ffabf3] shadow-[0_0_8px_rgba(255,171,243,0.4)]'
+            }`}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+export default function HomeTab({ questions, user, onVote, onResetVote }: HomeTabProps) {
+  const activeQuestions = questions.filter((q) => q.active);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // Find index of first active question that the user hasn't voted on yet (otherwise show first)
+  useEffect(() => {
+    const firstUnvoted = activeQuestions.findIndex(q => !q.userVoted);
+    if (firstUnvoted !== -1) {
+      setCurrentIndex(firstUnvoted);
+    } else {
+      setCurrentIndex(0);
+    }
+  }, [questions]);
+
+  const activeQuestion = activeQuestions[currentIndex];
 
   const [pendingVote, setPendingVote] = useState<'YES' | 'NO' | null>(null);
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [votedChoice, setVotedChoice] = useState<'YES' | 'NO' | null>(null);
 
-  if (!activeDebate) {
+  // If there are no active questions, render the Retro Empty State Screen
+  if (!activeQuestion) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <span className="material-symbols-outlined text-[#39ff14] text-5xl mb-4 animate-pulse">
-          error
-        </span>
-        <p className="text-[#e5e2e1]/60 font-mono">No live debates active in the sector.</p>
+      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+        {/* Pixel Character Waiting - Retro SVG */}
+        <div className="mb-6 relative">
+          <svg 
+            width="80" 
+            height="80" 
+            viewBox="0 0 16 16" 
+            fill="none" 
+            xmlns="http://www.w3.org/2000/svg"
+            className="text-[#39ff14] mx-auto filter drop-shadow-[0_0_6px_rgba(57,255,20,0.4)]"
+            style={{ imageRendering: 'pixelated' }}
+          >
+            {/* Retro 8-bit character */}
+            <path d="M5 1h6v1H5V1zm-1 1h8v1H4V2zm-1 1h10v3H3V3zm0 3h2v1H3V6zm8 0h2v1h-2V6zm-8 1h12v5H3V7zm2 5h2v3H5v-3zm4 0h2v3H9v-3z" fill="currentColor" />
+            {/* Eyes */}
+            <path d="M6 4h1v1H6V4zm3 0h1v1H9V4z" fill="#000000" />
+            <path d="M5 8h6v1H5V8zm1 1h4v1H6V9z" fill="#ffabf3" />
+          </svg>
+          {/* Animated glow */}
+          <div className="absolute inset-0 bg-[#39ff14]/5 blur-xl -z-10 rounded-full animate-pulse"></div>
+        </div>
+
+        <h3 className="font-sans text-xl font-extrabold tracking-wider text-[#e5e2e1] uppercase">
+          NEW VOTE COMING SOON
+        </h3>
+        <p className="mt-2 text-[#baccb0]/60 font-mono text-xs max-w-xs leading-relaxed uppercase">
+          The admin core has concluded all sector polls. Stand by for the next block injection.
+        </p>
+
+        {/* Action card */}
+        <div className="mt-8 p-4 bg-[#1c1b1b] border-2 border-dashed border-[#3c4b35] rounded-[4px] max-w-xs w-full shadow-[3px_3px_0px_#000000]">
+          <span className="font-mono text-[9px] text-[#ffdb40] font-bold block mb-1">STREAK SAFE</span>
+          <span className="text-[10px] text-[#baccb0]/70 font-body block leading-snug">
+            Your current 🔥 {user.streak} day streak will remain preserved until a new poll is broadcast.
+          </span>
+        </div>
       </div>
     );
   }
 
-  const totalVotes = activeDebate.yesVotes + activeDebate.noVotes;
-  const yesPercentage = totalVotes > 0 ? Math.round((activeDebate.yesVotes / totalVotes) * 100) : 50;
+  const totalVotes = activeQuestion.yes_count + activeQuestion.no_count;
+  const yesPercentage = totalVotes > 0 ? Math.round((activeQuestion.yes_count / totalVotes) * 100) : 50;
   const noPercentage = 100 - yesPercentage;
 
   const handleVoteSelect = (option: 'YES' | 'NO') => {
-    if (activeDebate.userVoted) return; // Already voted
+    if (activeQuestion.userVoted) return; // Already voted
     setPendingVote(option);
   };
 
@@ -44,96 +154,136 @@ export default function HomeTab({ debates, username, onVote, onResetVote }: Home
     
     // Simulate slight lag for neural registration feel
     setTimeout(() => {
-      onVote(activeDebate.id, pendingVote, commentText.trim() || undefined);
+      onVote(activeQuestion.id, pendingVote, commentText.trim() || undefined);
+      setVotedChoice(pendingVote);
       setPendingVote(null);
       setCommentText('');
       setIsSubmitting(false);
-    }, 600);
+      setShowCelebration(true); // Trigger Phase 4 Celebration Modal
+    }, 800);
   };
 
+  const handleNextQuestion = () => {
+    if (currentIndex < activeQuestions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      setCurrentIndex(0); // wrap
+    }
+  };
+
+  const yesVoted = activeQuestion.userVoted === 'YES';
+  const yesPending = pendingVote === 'YES';
+  const noVoted = activeQuestion.userVoted === 'NO';
+  const noPending = pendingVote === 'NO';
+  const isVotedAny = !!activeQuestion.userVoted;
+
+  // Active styles for push animation
+  let yesBtnClasses = "w-full py-6 flex flex-col items-center gap-2 rounded-[4px] border-2 border-black font-sans font-bold text-lg select-none transition-all duration-75 text-black relative ";
+  if (yesVoted) {
+    yesBtnClasses += "bg-[#39ff14] border-[#39ff14] translate-x-[4px] translate-y-[4px] shadow-none opacity-100";
+  } else if (yesPending) {
+    yesBtnClasses += "bg-[#39ff14] translate-x-[2px] translate-y-[2px] shadow-[2px_2px_0px_#000000]";
+  } else if (isVotedAny) {
+    yesBtnClasses += "bg-[#1c1b1b] border-[#3c4b35] text-[#e5e2e1]/20 shadow-none opacity-30 cursor-not-allowed";
+  } else {
+    yesBtnClasses += "bg-[#39ff14] shadow-[4px_4px_0px_#000000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#000000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-[0px_0px_0px_#000000] cursor-pointer";
+  }
+
+  let noBtnClasses = "w-full py-6 flex flex-col items-center gap-2 rounded-[4px] border-2 border-black font-sans font-bold text-lg select-none transition-all duration-75 text-black relative ";
+  if (noVoted) {
+    noBtnClasses += "bg-[#ffabf3] border-[#ffabf3] translate-x-[4px] translate-y-[4px] shadow-none opacity-100";
+  } else if (noPending) {
+    noBtnClasses += "bg-[#ffabf3] translate-x-[2px] translate-y-[2px] shadow-[2px_2px_0px_#000000]";
+  } else if (isVotedAny) {
+    noBtnClasses += "bg-[#1c1b1b] border-[#3c4b35] text-[#e5e2e1]/20 shadow-none opacity-30 cursor-not-allowed";
+  } else {
+    noBtnClasses += "bg-[#ffabf3] shadow-[4px_4px_0px_#000000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#000000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-[0px_0px_0px_#000000] cursor-pointer";
+  }
+
   return (
-    <div className="flex flex-col gap-8 pb-10">
+    <div className="flex flex-col gap-6 pb-10 relative">
       
-      {/* Debates Sector Switcher */}
-      {liveDebates.length > 1 && (
-        <div className="flex gap-2 p-1 bg-[#131313] border border-[#3c4b35]/20 rounded-lg">
-          {liveDebates.map((d, index) => (
-            <button
-              key={d.id}
-              onClick={() => {
-                setSelectedDebateIndex(index);
-                setPendingVote(null);
-                setCommentText('');
-              }}
-              className={`flex-1 py-2 text-xs font-mono rounded transition-all char-spacing-wide font-bold uppercase ${
-                selectedDebateIndex === index
-                  ? 'bg-[#1c1b1b] text-[#39ff14] border border-[#39ff14]/30'
-                  : 'text-[#e5e2e1]/40 hover:text-[#e5e2e1]/80 hover:bg-[#1c1b1b]/50'
-              }`}
-            >
-              Debate {String(index + 1).padStart(2, '0')}
-            </button>
-          ))}
+      {/* Debates Sector Switcher / Carousel Header */}
+      {activeQuestions.length > 1 && (
+        <div className="flex justify-between items-center gap-4 bg-[#131313] border-2 border-[#3c4b35] p-2 rounded-[4px] shadow-[3px_3px_0px_rgba(0,0,0,1)] relative z-10">
+          <span className="font-mono text-[9px] text-[#baccb0]/55 font-bold uppercase tracking-widest pl-2">
+            ACTIVE: SECTOR {currentIndex + 1}/{activeQuestions.length}
+          </span>
+          <button
+            onClick={handleNextQuestion}
+            className="px-3 py-1 bg-[#1c1b1b] border border-[#39ff14]/40 text-[#39ff14] font-mono text-[9px] font-bold rounded-[2px] cursor-pointer shadow-[1px_1px_0px_#000000] active:translate-y-[0.5px] uppercase"
+          >
+            NEXT SECTOR ➔
+          </button>
         </div>
       )}
 
-      {/* Live Badge */}
-      <div className="flex justify-start">
-        <div className="inline-flex items-center gap-2 bg-[#ffb4ab]/10 border border-[#ffb4ab]/20 px-3 py-1 rounded-sm text-[10px] font-bold text-[#ffb4ab] tracking-[0.2em] uppercase">
-          <span className="w-1.5 h-1.5 bg-[#ffb4ab] rounded-full animate-pulse shadow-[0_0_8px_#ffb4ab]"></span>
-          Live Debate
+      {/* Meta indicators row */}
+      <div className="flex justify-between items-center z-10">
+        {/* Live Badge */}
+        <div className="inline-flex items-center gap-2 bg-[#ffb4ab]/10 border border-[#ffb4ab]/30 px-3 py-1 rounded-none text-[10px] font-bold text-[#ffb4ab] tracking-[0.2em] uppercase">
+          <span className="w-1.5 h-1.5 bg-[#ffb4ab] rounded-none animate-pulse shadow-[0_0_8px_#ffb4ab]"></span>
+          LIVE SECTOR
         </div>
+
+        {/* Timer countdown badge */}
+        <QuestionTimer expiresAt={activeQuestion.expires_at} />
       </div>
 
-      {/* Topic Details Section */}
-      <section className="space-y-4">
-        <div className="space-y-2">
-          <span className="font-mono text-[11px] text-[#39ff14] uppercase tracking-widest opacity-80 block">
-            {String(activeDebate.id).padStart(2, '0')} / {activeDebate.category}
+      {/* Primary voting card */}
+      <section className="space-y-4 relative">
+        <div className="space-y-1">
+          <span className="font-mono text-[11px] text-[#39ff14] uppercase tracking-widest font-bold block">
+            ID: {String(activeQuestion.id).padStart(2, '0')} // {activeQuestion.category}
           </span>
-          <h2 className="font-sans text-3xl font-bold text-[#e5e2e1] leading-[1.1] tracking-tight">
-            {activeDebate.question}
-          </h2>
+          
+          <div className="flex justify-between items-start gap-4">
+            <h2 className="text-headline-lg-mobile sm:text-headline-lg text-[#e5e2e1] flex-grow leading-tight">
+              {activeQuestion.question}
+            </h2>
+            {/* Floating Card Streak counter */}
+            <div className="flex items-center gap-1.5 bg-[#131313] px-2.5 py-1 rounded-[4px] border-2 border-[#39ff14] shadow-[2px_2px_0px_#000000] flex-shrink-0 animate-pulse">
+              <PixelFireIcon className="w-4 h-4" />
+              <span className="font-mono text-[10px] text-[#39ff14] font-extrabold uppercase">
+                {user.streak}D
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Dynamic Canvas Image */}
-        <div className="w-full h-56 bg-[#201f1f] border border-[#3c4b35]/20 rounded-xl relative overflow-hidden group">
-          <img
-            className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity duration-700"
-            referrerPolicy="no-referrer"
-            src={activeDebate.image}
-            alt={activeDebate.question}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e0e] via-transparent to-transparent"></div>
+        {/* Large pixel card inside card wrapper */}
+        <div className="w-full h-52 bg-[#201f1f] border-2 border-[#3c4b35] rounded-[4px] relative overflow-hidden group shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+          <div className="crt-noise-overlay"></div>
+          {activeQuestion.image && (
+            <img
+              className="w-full h-full object-cover opacity-50 group-hover:opacity-65 transition-opacity duration-700"
+              referrerPolicy="no-referrer"
+              src={activeQuestion.image}
+              alt=""
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e0e] via-[#0e0e0e]/20 to-transparent"></div>
+          
+          {/* Neon scan grids overlay */}
+          <div className="absolute inset-0 grid-overlay opacity-5 pointer-events-none"></div>
         </div>
       </section>
 
-      {/* Vote Action Box */}
+      {/* YES and NO Actions */}
       <section className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           
           {/* YES Button */}
           <button
             onClick={() => handleVoteSelect('YES')}
-            disabled={!!activeDebate.userVoted}
-            className={`group relative bg-[#1c1b1b] rounded-xl py-6 flex flex-col items-center gap-3 active-scale transition-all overflow-hidden border ${
-              activeDebate.userVoted === 'YES'
-                ? 'border-[#39ff14] ring-2 ring-[#39ff14]/20 shadow-[0_0_15px_rgba(57,255,20,0.25)]'
-                : pendingVote === 'YES'
-                ? 'border-[#39ff14]/70 ring-1 ring-[#39ff14]/20 shadow-[0_0_10px_rgba(57,255,20,0.15)] bg-[#39ff14]/5'
-                : 'border-[#39ff14]/20 hover:border-[#39ff14]/55 hover:shadow-[0_0_12px_rgba(57,255,20,0.1)]'
-            }`}
+            disabled={isVotedAny}
+            className={yesBtnClasses}
           >
-            <div className="absolute inset-0 bg-[#39ff14]/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <span className={`text-3xl filter transition-all ${
-              activeDebate.userVoted === 'YES' || pendingVote === 'YES' ? 'grayscale-0' : 'grayscale group-hover:grayscale-0'
-            }`}>
-              ✅
-            </span>
-            <span className="font-sans text-lg font-bold tracking-widest text-[#39ff14]/90">YES</span>
-            {activeDebate.userVoted === 'YES' && (
-              <span className="absolute top-2 right-2 text-[9px] font-mono font-bold text-[#39ff14] bg-[#39ff14]/10 px-1.5 py-0.5 rounded border border-[#39ff14]/20">
-                ACTIVE
+            <span className="text-2xl">✅</span>
+            <span className="tracking-widest uppercase">YES</span>
+            {yesVoted && (
+              <span className="absolute top-1.5 right-1.5 text-[8px] font-mono font-bold text-[#053900] bg-black/10 px-1 py-0.5 rounded-none border border-black/20">
+                VOTED
               </span>
             )}
           </button>
@@ -141,31 +291,20 @@ export default function HomeTab({ debates, username, onVote, onResetVote }: Home
           {/* NO Button */}
           <button
             onClick={() => handleVoteSelect('NO')}
-            disabled={!!activeDebate.userVoted}
-            className={`group relative bg-[#1c1b1b] rounded-xl py-6 flex flex-col items-center gap-3 active-scale transition-all overflow-hidden border ${
-              activeDebate.userVoted === 'NO'
-                ? 'border-[#ffabf3] ring-2 ring-[#ffabf3]/20 shadow-[0_0_15px_rgba(254,0,254,0.25)]'
-                : pendingVote === 'NO'
-                ? 'border-[#ffabf3]/70 ring-1 ring-[#ffabf3]/20 shadow-[0_0_10px_rgba(254,0,254,0.15)] bg-[#ffabf3]/5'
-                : 'border-[#ffabf3]/20 hover:border-[#ffabf3]/55 hover:shadow-[0_0_12px_rgba(254,0,254,0.1)]'
-            }`}
+            disabled={isVotedAny}
+            className={noBtnClasses}
           >
-            <div className="absolute inset-0 bg-[#ffabf3]/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <span className={`text-3xl filter transition-all ${
-              activeDebate.userVoted === 'NO' || pendingVote === 'NO' ? 'grayscale-0' : 'grayscale group-hover:grayscale-0'
-            }`}>
-              ❌
-            </span>
-            <span className="font-sans text-lg font-bold tracking-widest text-[#ffabf3]/90">NO</span>
-            {activeDebate.userVoted === 'NO' && (
-              <span className="absolute top-2 right-2 text-[9px] font-mono font-bold text-[#ffabf3] bg-[#ffabf3]/10 px-1.5 py-0.5 rounded border border-[#ffabf3]/20">
-                ACTIVE
+            <span className="text-2xl">❌</span>
+            <span className="tracking-widest uppercase">NO</span>
+            {noVoted && (
+              <span className="absolute top-1.5 right-1.5 text-[8px] font-mono font-bold text-[#5b005b] bg-black/10 px-1 py-0.5 rounded-none border border-black/20">
+                VOTED
               </span>
             )}
           </button>
         </div>
 
-        {/* Pending Vote Form */}
+        {/* Comments Input (Sliding visual) */}
         <AnimatePresence>
           {pendingVote && (
             <motion.div
@@ -174,9 +313,11 @@ export default function HomeTab({ debates, username, onVote, onResetVote }: Home
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="bg-[#131313] border border-[#3c4b35]/40 rounded-xl p-4 mt-2 space-y-3 shadow-inner">
-                <div className="flex justify-between items-center text-xs font-mono text-[#e5e2e1]/70">
-                  <span>REGISTRATION LEDGER TYPE:</span>
+              <div className="bg-[#131313] border-2 border-[#3c4b35] rounded-[4px] p-4 mt-2 space-y-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] relative overflow-hidden">
+                <div className="crt-noise-overlay"></div>
+                
+                <div className="flex justify-between items-center text-[10px] font-mono text-[#e5e2e1]/70 relative z-10">
+                  <span>LEDGER REGISTRATION:</span>
                   <span className={`font-bold ${pendingVote === 'YES' ? 'text-[#39ff14]' : 'text-[#ffabf3]'}`}>
                     {pendingVote}
                   </span>
@@ -185,27 +326,27 @@ export default function HomeTab({ debates, username, onVote, onResetVote }: Home
                 <input
                   type="text"
                   maxLength={100}
-                  placeholder={`Optional: Comment why you voted ${pendingVote}...`}
+                  placeholder={`Broadcast comment... (optional)`}
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
-                  className="w-full bg-[#1c1b1b] border border-[#3c4b35]/20 rounded p-2 text-sm text-[#e5e2e1] placeholder-[#e5e2e1]/30 focus:outline-none focus:border-[#39ff14] focus:ring-1 focus:ring-[#39ff14]/30 font-body"
+                  className="w-full bg-[#1c1b1b] border-2 border-[#3c4b35] rounded-[4px] p-2 text-xs text-[#e5e2e1] placeholder-[#e5e2e1]/30 focus:outline-none focus:border-[#39ff14] font-body relative z-10"
                 />
                 
-                <div className="flex gap-2">
+                <div className="flex gap-3 relative z-10">
                   <button
                     onClick={() => setPendingVote(null)}
-                    className="px-3 bg-[#1c1b1b] hover:bg-[#201f1f] text-xs font-mono font-bold border border-white/10 rounded cursor-pointer text-[#e5e2e1]/60"
+                    className="px-4 py-2 bg-[#201f1f] border-2 border-black rounded-[4px] text-xs font-mono font-bold text-[#e5e2e1]/70 cursor-pointer shadow-[3px_3px_0px_#000000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#000000] active:translate-x-[3px] active:translate-y-[3px] active:shadow-[0px_0px_0px_#000000] transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleRegisterVote}
                     disabled={isSubmitting}
-                    className="flex-grow py-2 bg-[#39ff14] text-[#053900] font-sans font-bold rounded text-sm hover:brightness-110 active:scale-95 transition-all shadow-[0_0_15px_rgba(57,255,20,0.3)] cursor-pointer flex items-center justify-center gap-2"
+                    className="flex-grow py-2 bg-[#39ff14] text-black border-2 border-black rounded-[4px] text-xs font-sans font-bold cursor-pointer shadow-[3px_3px_0px_#000000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#000000] active:translate-x-[3px] active:translate-y-[3px] active:shadow-[0px_0px_0px_#000000] transition-all flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <>
-                        <span className="w-4 h-4 border-2 border-[#053900] border-t-transparent rounded-full animate-spin"></span>
+                        <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
                         SYNCHRONIZING...
                       </>
                     ) : (
@@ -219,42 +360,29 @@ export default function HomeTab({ debates, username, onVote, onResetVote }: Home
         </AnimatePresence>
       </section>
 
-      {/* Refined Stats Display */}
-      <section className="space-y-4">
-        <div className="flex justify-between items-center text-[12px] font-mono tracking-tighter">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#39ff14]"></span>
+      {/* Live percentage block layout */}
+      <section className="space-y-3">
+        <div className="flex justify-between items-center text-[10px] font-mono tracking-wide">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-none bg-[#39ff14]"></span>
             <span className="text-[#39ff14] font-bold">{yesPercentage}% AGREE</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <span className="text-[#ffabf3] font-bold">{noPercentage}% DISAGREE</span>
-            <span className="w-2 h-2 rounded-full bg-[#ffabf3]"></span>
+            <span className="w-2 h-2 rounded-none bg-[#ffabf3]"></span>
           </div>
         </div>
 
-        {/* Minimal Progress Bar with Neon Shadows */}
-        <div className="h-2 w-full bg-[#353534]/30 rounded-full overflow-hidden flex border border-[#3c4b35]/15">
-          <motion.div
-            initial={{ width: '50%' }}
-            animate={{ width: `${yesPercentage}%` }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="h-full bg-[#39ff14] shadow-[0_0_10px_rgba(57,255,20,0.5)]"
-          />
-          <motion.div
-            initial={{ width: '50%' }}
-            animate={{ width: `${noPercentage}%` }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="h-full bg-[#ffabf3] shadow-[0_0_10px_rgba(254,0,254,0.5)]"
-          />
-        </div>
+        {/* Block representation bar */}
+        <DuelPixelProgressBar yesPercentage={yesPercentage} />
 
-        <div className="flex items-center justify-between text-center font-mono text-[10px] text-[#baccb0]/40 tracking-[0.15em]">
+        <div className="flex items-center justify-between text-center font-mono text-[9px] text-[#baccb0]/40 tracking-wider">
           <span>NET LEDGER DATA</span>
           <span>{totalVotes.toLocaleString()} VOTES REGISTERED</span>
-          {activeDebate.userVoted ? (
+          {activeQuestion.userVoted ? (
             <button
-              onClick={() => onResetVote(activeDebate.id)}
-              className="text-[#ffabf3] hover:text-[#fe00fe] transition-colors font-bold underline leading-none uppercase tracking-[0.1em] cursor-pointer"
+              onClick={() => onResetVote(activeQuestion.id)}
+              className="text-[#ffabf3] hover:text-[#fe00fe] transition-colors font-bold border-b border-[#ffabf3]/30 cursor-pointer uppercase"
             >
               REVOTE ↺
             </button>
@@ -264,29 +392,28 @@ export default function HomeTab({ debates, username, onVote, onResetVote }: Home
         </div>
       </section>
 
-      {/* Minimal Activity Feed */}
-      <section className="space-y-4">
-        <h3 className="font-mono text-xs text-[#e5e2e1]/50 uppercase tracking-[0.3em] flex items-center gap-3">
-          Activity
-          <span className="flex-grow h-[1px] bg-[#3c4b35]/20"></span>
+      {/* Activity comments feed */}
+      <section className="space-y-3">
+        <h3 className="font-mono text-[10px] text-[#e5e2e1]/45 uppercase tracking-[0.25em] flex items-center gap-3">
+          Activity Logs
+          <span className="flex-grow h-[1px] bg-[#3c4b35]/25"></span>
         </h3>
 
-        <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+        <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
           <AnimatePresence initial={false}>
-            {activeDebate.comments.map((comment) => {
+            {activeQuestion.comments.map((comment) => {
               const bYes = comment.vote === 'YES';
               return (
                 <motion.div
                   key={comment.id}
-                  initial={{ opacity: 0, x: bYes ? -15 : 15, y: -5 }}
-                  animate={{ opacity: 1, x: 0, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className={`flex gap-3 items-center p-3 bg-[#1c1b1b]/50 border-l rounded-r-lg ${
-                    bYes ? 'border-[#39ff14]/50' : 'border-[#ffabf3]/50'
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className={`flex gap-3 items-center p-3 bg-[#1c1b1b] border-2 border-l-[6px] rounded-[4px] relative overflow-hidden shadow-[2px_2px_0px_rgba(0,0,0,1)] ${
+                    bYes ? 'border-[#3c4b35] border-l-[#39ff14]' : 'border-[#3c4b35] border-l-[#ffabf3]'
                   }`}
                 >
-                  {/* Cyber avatar box */}
-                  <div className="w-8 h-8 rounded bg-[#353534] border border-[#3c4b35]/30 flex-shrink-0 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-none bg-[#131313] border-2 border-[#3c4b35] flex-shrink-0 flex items-center justify-center">
                     <span className={`material-symbols-outlined text-[15px] ${
                       bYes ? 'text-[#39ff14]' : 'text-[#ffabf3]'
                     }`}>
@@ -296,14 +423,14 @@ export default function HomeTab({ debates, username, onVote, onResetVote }: Home
 
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-semibold text-[#e5e2e1] font-sans truncate">
+                      <span className="text-xs font-bold text-[#e5e2e1] font-sans truncate">
                         {comment.username}
                       </span>
-                      <span className="text-[9px] font-mono text-[#baccb0]/40">
+                      <span className="text-[8px] font-mono text-[#baccb0]/35">
                         {comment.timestamp}
                       </span>
                     </div>
-                    <p className="text-xs text-[#baccb0] leading-relaxed mt-0.5 font-body">
+                    <p className="text-[11px] text-[#baccb0]/80 leading-normal mt-0.5 font-body">
                       voted{' '}
                       <span className={`font-bold ${bYes ? 'text-[#39ff14]' : 'text-[#ffabf3]'}`}>
                         {comment.vote}
@@ -316,11 +443,95 @@ export default function HomeTab({ debates, username, onVote, onResetVote }: Home
             })}
           </AnimatePresence>
           
-          {activeDebate.comments.length === 0 && (
+          {activeQuestion.comments.length === 0 && (
             <p className="text-center font-mono text-xs text-[#e5e2e1]/30 py-4">No data streams received yet for this debate.</p>
           )}
         </div>
       </section>
+
+      {/* Phase 4 Vote Submitted / Celebration State overlay modal */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-[#0e0e0e]/95 backdrop-blur-xs flex items-center justify-center p-6 z-[999] text-center select-none"
+          >
+            {/* scanline CRT overlay */}
+            <div className="absolute inset-0 crt-scanline z-10 opacity-[0.16] pointer-events-none"></div>
+            <div className="crt-noise-overlay"></div>
+
+            {/* Glowing background circles */}
+            <div className="absolute w-64 h-64 bg-[#39ff14]/10 rounded-full blur-3xl -z-10 animate-pulse"></div>
+
+            <motion.div
+              initial={{ scale: 0.9, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 15 }}
+              transition={{ type: 'spring', damping: 20 }}
+              className="pixel-card bg-[#1c1b1b] border-2 border-[#39ff14] p-8 max-w-sm w-full space-y-6 shadow-[8px_8px_0px_#000000] relative overflow-hidden"
+            >
+              <div className="crt-noise-overlay"></div>
+
+              {/* Sparkles checkmark */}
+              <div className="flex justify-center">
+                <motion.div
+                  animate={{
+                    scale: [1, 1.2, 1],
+                    rotate: [0, 10, -10, 0]
+                  }}
+                  transition={{ duration: 1, repeat: 1 }}
+                  className="w-16 h-16 rounded-none bg-[#39ff14]/15 border-2 border-[#39ff14] text-[#39ff14] flex items-center justify-center"
+                >
+                  <span className="material-symbols-outlined text-4xl">emoji_events</span>
+                </motion.div>
+              </div>
+
+              {/* Vote result details */}
+              <div className="space-y-2">
+                <h3 className="font-sans text-2xl font-extrabold text-[#e5e2e1] uppercase tracking-wider">
+                  VOTE REGISTERED!
+                </h3>
+                
+                {/* Streak progression block */}
+                <div className="inline-flex items-center gap-2 bg-[#39ff14]/15 border border-[#39ff14]/40 px-4 py-2 rounded-none">
+                  <PixelFireIcon className="w-5 h-5 text-[#ffdb40]" />
+                  <span className="font-mono text-sm text-[#39ff14] font-extrabold tracking-widest uppercase">
+                    +1 STREAK ENERGY!
+                  </span>
+                </div>
+              </div>
+
+              {/* Splits inside celebration screen */}
+              <div className="p-4 bg-[#131313] border border-[#3c4b35] rounded-[2px] space-y-2">
+                <div className="flex justify-between items-center text-[10px] font-mono font-bold text-[#baccb0]/55 uppercase tracking-wide">
+                  <span>AGREEMENT GRID:</span>
+                  <span className="text-[#39ff14] font-extrabold">
+                    {votedChoice === 'YES' ? yesPercentage : noPercentage}% WITH YOU
+                  </span>
+                </div>
+                <div className="h-2 bg-[#1c1b1b] border border-black overflow-hidden flex">
+                  <div className="h-full bg-[#39ff14]" style={{ width: `${yesPercentage}%` }}></div>
+                  <div className="h-full bg-[#ffabf3]" style={{ width: `${noPercentage}%` }}></div>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-[#baccb0]/70 font-body leading-normal uppercase">
+                Streak reinforced successfully. Current record: <span className="text-[#ffdb40] font-bold font-mono">🔥 {user.streak} DAYS</span>. Keep it burning daily!
+              </p>
+
+              {/* Continue button */}
+              <button
+                onClick={() => setShowCelebration(false)}
+                className="w-full py-3 bg-[#39ff14] text-black border-2 border-black rounded-[4px] font-sans text-xs font-bold uppercase tracking-wider cursor-pointer shadow-[4px_4px_0px_#000000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] transition-all"
+              >
+                CONTINUE TO DISCUSSIONS ➔
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

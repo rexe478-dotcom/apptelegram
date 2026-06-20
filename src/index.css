@@ -7,8 +7,7 @@
   --font-mono: 'JetBrains Mono', monospace;
   --font-body: 'Hanken Grotesk', sans-serif;
 
-  /* Theme colors matching Cyberpunk Arcade UI */
-  --color-background-custom: #0e0e0e;
+  /* Theme colors matching Neo-Arcade UI */
   --color-surface: #131313;
   --color-surface-dim: #131313;
   --color-surface-bright: #393939;
@@ -24,6 +23,8 @@
   --color-outline: #85967c;
   --color-outline-variant: #3c4b35;
   --color-surface-tint: #2ae500;
+  --color-primary: #efffe3;
+  --color-on-primary: #053900;
   --color-primary-container: #39ff14;
   --color-on-primary-container: #107100;
   --color-inverse-primary: #106e00;
@@ -57,33 +58,112 @@
 }
 
 @layer utilities {
-  .neo-glow-primary {
-    box-shadow: 0 0 15px rgba(57, 255, 20, 0.15);
-  }
-
-  .neo-glow-secondary {
-    box-shadow: 0 0 15px rgba(254, 0, 254, 0.15);
-  }
-
-  .border-thin {
-    border-width: 1px;
-  }
-
   .crt-scanline {
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.05) 50%);
-    background-size: 100% 2px;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.08) 50%);
+    background-size: 100% 4px;
     pointer-events: none;
   }
 
   .active-scale:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
   }
 
   .gradient-mask {
     mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
   }
 
-  /* Material symbol configuration */
+  /* Neo-Arcade Pixel border card */
+  .pixel-card {
+    background-color: #1a1a1a;
+    border: 2px solid #353534;
+    border-radius: 4px;
+    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* CRT noise overlay texture */
+  .crt-noise-overlay {
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.08;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    z-index: 1;
+  }
+
+  /* Blocky Interactive CTA Button styling */
+  .pixel-btn {
+    border: 2px solid #000000;
+    border-radius: 4px;
+    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .pixel-btn:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 1);
+  }
+
+  .pixel-btn:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0px 0px 0px 0px rgba(0, 0, 0, 1);
+  }
+
+  .pixel-btn:disabled {
+    transform: none;
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  /* Custom Typography utility classes */
+  .text-headline-xl {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 40px;
+    letter-spacing: -0.02em;
+  }
+
+  .text-headline-lg {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 32px;
+  }
+
+  .text-body-lg {
+    font-family: 'Hanken Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 28px;
+  }
+
+  .text-body-md {
+    font-family: 'Hanken Grotesk', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 24px;
+  }
+
+  .text-label-md {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+  }
+
+  .text-headline-lg-mobile {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 28px;
+  }
+
   .material-symbols-outlined {
     font-family: 'Material Symbols Outlined';
     font-weight: normal;
@@ -104,21 +184,22 @@ body {
   background-color: #0e0e0e;
   color: #e5e2e1;
   -webkit-tap-highlight-color: transparent;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Hanken Grotesk', sans-serif;
   overflow-x: hidden;
   min-height: 100vh;
 }
 
 /* Custom Scrollbar - Cyberpunk theme */
 ::-webkit-scrollbar {
-  width: 5px;
+  width: 6px;
 }
 ::-webkit-scrollbar-track {
   background: #0e0e0e;
 }
 ::-webkit-scrollbar-thumb {
   background: #201f1f;
-  border-radius: 4px;
+  border-radius: 0px;
+  border: 1px solid #3c4b35;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #39ff14;

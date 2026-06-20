@@ -6,37 +6,61 @@ import HomeTab from './components/HomeTab';
 import HistoryTab from './components/HistoryTab';
 import RanksTab from './components/RanksTab';
 import ProfileTab from './components/ProfileTab';
+import SplashScreen from './components/SplashScreen';
+import NotificationsPanel from './components/NotificationsPanel';
 
-import { INITIAL_DEBATES, DEFAULT_LEADERBOARD, DEFAULT_USER_PROFILE } from './data';
-import { Debate, LeaderboardEntry, UserProfile, Comment } from './types';
+import { INITIAL_QUESTIONS, DEFAULT_LEADERBOARD_DAILY, DEFAULT_LEADERBOARD_ALLTIME, DEFAULT_USER, INITIAL_NOTIFICATIONS } from './data';
+import { Question, LeaderboardEntry, TelegramUser, Comment, AppNotification } from './types';
 
 export default function App() {
-  // Tab routing
+  // Navigation tabs routing
   const [activeTab, setActiveTab] = useState<TabType>('home');
 
+  // Splash Screen Visibility State
+  const [showSplash, setShowSplash] = useState<boolean>(true);
+
+  // Notifications Modal/Slide Panel visibility State
+  const [showNotifications, setShowNotifications] = useState<boolean>(false);
+
   // App core persistent states
-  const [debates, setDebates] = useState<Debate[]>(() => {
-    const cached = localStorage.getItem('streak_debates');
+  const [questions, setQuestions] = useState<Question[]>(() => {
+    const cached = localStorage.getItem('streak_questions');
     if (cached) {
       try { return JSON.parse(cached); } catch (e) { console.error(e); }
     }
-    return INITIAL_DEBATES;
+    return INITIAL_QUESTIONS;
   });
 
-  const [profile, setProfile] = useState<UserProfile>(() => {
-    const cached = localStorage.getItem('streak_user_profile');
+  const [user, setUser] = useState<TelegramUser>(() => {
+    const cached = localStorage.getItem('streak_user');
     if (cached) {
       try { return JSON.parse(cached); } catch (e) { console.error(e); }
     }
-    return DEFAULT_USER_PROFILE;
+    return DEFAULT_USER;
   });
 
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(() => {
-    const cached = localStorage.getItem('streak_leaderboard');
+  const [leaderboardDaily, setLeaderboardDaily] = useState<LeaderboardEntry[]>(() => {
+    const cached = localStorage.getItem('streak_leaderboard_daily');
     if (cached) {
       try { return JSON.parse(cached); } catch (e) { console.error(e); }
     }
-    return DEFAULT_LEADERBOARD;
+    return DEFAULT_LEADERBOARD_DAILY;
+  });
+
+  const [leaderboardAllTime, setLeaderboardAllTime] = useState<LeaderboardEntry[]>(() => {
+    const cached = localStorage.getItem('streak_leaderboard_alltime');
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) { console.error(e); }
+    }
+    return DEFAULT_LEADERBOARD_ALLTIME;
+  });
+
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    const cached = localStorage.getItem('streak_notifications');
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) { console.error(e); }
+    }
+    return INITIAL_NOTIFICATIONS;
   });
 
   // Reference for pixel particle animation canvas
@@ -44,33 +68,65 @@ export default function App() {
 
   // Sync state to local storage when modified
   useEffect(() => {
-    localStorage.setItem('streak_debates', JSON.stringify(debates));
-  }, [debates]);
+    localStorage.setItem('streak_questions', JSON.stringify(questions));
+  }, [questions]);
 
   useEffect(() => {
-    localStorage.setItem('streak_user_profile', JSON.stringify(profile));
-  }, [profile]);
+    localStorage.setItem('streak_user', JSON.stringify(user));
+  }, [user]);
 
   useEffect(() => {
-    localStorage.setItem('streak_leaderboard', JSON.stringify(leaderboard));
-  }, [leaderboard]);
+    localStorage.setItem('streak_leaderboard_daily', JSON.stringify(leaderboardDaily));
+  }, [leaderboardDaily]);
 
-  // Sync user info into the leaderboard row dynamically
   useEffect(() => {
-    setLeaderboard((prev) =>
+    localStorage.setItem('streak_leaderboard_alltime', JSON.stringify(leaderboardAllTime));
+  }, [leaderboardAllTime]);
+
+  useEffect(() => {
+    localStorage.setItem('streak_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
+  // Telegram WebApp Integration & Shell simulation
+  useEffect(() => {
+    const webapp = (window as any).Telegram?.WebApp;
+    if (webapp) {
+      try {
+        webapp.ready();
+        webapp.expand();
+        // If Telegram user exists, inject details
+        const tgUser = webapp.initDataUnsafe?.user;
+        if (tgUser) {
+          setUser((prev) => ({
+            ...prev,
+            telegram_id: String(tgUser.id),
+            username: tgUser.username ? `@${tgUser.username}` : `${tgUser.first_name} ${tgUser.last_name || ''}`.trim()
+          }));
+        }
+      } catch (e) {
+        console.error("Failed to initialize Telegram WebApp SDK:", e);
+      }
+    }
+  }, []);
+
+  // Sync user info into both leaderboards dynamically
+  useEffect(() => {
+    const updateLeaderboard = (prev: LeaderboardEntry[]) =>
       prev.map((player) => {
-        if (player.isCurrentUser || player.username === "You" || player.username === profile.username) {
+        if (player.isCurrentUser || player.username === "You" || player.username === user.username) {
           return {
             ...player,
-            username: profile.username,
-            streak: profile.streak,
-            tier: profile.badge
+            username: user.username,
+            streak: user.streak,
+            tier: user.badge
           };
         }
         return player;
-      })
-    );
-  }, [profile.username, profile.streak, profile.badge]);
+      });
+
+    setLeaderboardDaily(updateLeaderboard);
+    setLeaderboardAllTime(updateLeaderboard);
+  }, [user.username, user.streak, user.badge]);
 
   // Cyber Background Pixel particle Drawer
   useEffect(() => {
@@ -136,18 +192,18 @@ export default function App() {
   }, []);
 
   // Handle active vote placement and addition of comments
-  const handleVote = (debateId: number, option: 'YES' | 'NO', commentText?: string) => {
-    // 1. Update matching debate metrics
-    setDebates((prevDebates) =>
-      prevDebates.map((d) => {
-        if (d.id === debateId) {
+  const handleVote = (questionId: number, option: 'YES' | 'NO', commentText?: string) => {
+    // 1. Update matching question metrics
+    setQuestions((prevQuestions) =>
+      prevQuestions.map((q) => {
+        if (q.id === questionId) {
           const yesOffset = option === 'YES' ? 1 : 0;
           const noOffset = option === 'NO' ? 1 : 0;
 
           // Assemble a newly cast user comment
           const newComment: Comment = {
             id: `c_user_${Date.now()}`,
-            username: profile.username || 'You',
+            username: user.username || 'You',
             vote: option,
             text: commentText || (option === 'YES' ? 'Confirmed my vote sequence!' : 'Alternative route preferred.'),
             timestamp: 'Just now',
@@ -155,14 +211,14 @@ export default function App() {
           };
 
           return {
-            ...d,
-            yesVotes: d.yesVotes + yesOffset,
-            noVotes: d.noVotes + noOffset,
+            ...q,
+            yes_count: q.yes_count + yesOffset,
+            no_count: q.no_count + noOffset,
             userVoted: option,
-            comments: [newComment, ...d.comments]
+            comments: [newComment, ...q.comments]
           };
         }
-        return d;
+        return q;
       })
     );
 
@@ -170,39 +226,56 @@ export default function App() {
     const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const currentDayName = daysOfWeek[new Date().getDay()];
 
-    setProfile((prev) => {
+    setUser((prev) => {
       const isClaimedToday = prev.lastClaimedBonus === new Date().toDateString();
       const updatedHistory = { ...prev.streakHistory, [currentDayName]: true };
       
       return {
         ...prev,
-        votesCount: prev.votesCount + 1,
+        total_votes: prev.total_votes + 1,
         streakHistory: updatedHistory,
         // Only bump streak if they voted and also haven't reinforced yet
-        streak: !isClaimedToday ? prev.streak : prev.streak
+        streak: !isClaimedToday ? prev.streak + 1 : prev.streak,
+        lastClaimedBonus: new Date().toDateString()
       };
     });
+
+    // Add a custom notification about streak reinforced
+    const newNotif: AppNotification = {
+      id: `n_streak_${Date.now()}`,
+      title: "Streak Preserved!",
+      body: `You voted on question #${questionId} and advanced your streak! 🔥`,
+      timestamp: "Just now",
+      unread: true,
+      type: "streak"
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
   };
 
   // Allow resetting vote (Revote option helper)
-  const handleResetVote = (debateId: number) => {
-    setDebates((prevDebates) =>
-      prevDebates.map((d) => {
-        if (d.id === debateId && d.userVoted) {
-          const originalVote = d.userVoted;
-          const userCommentId = d.comments.find(c => c.username === profile.username || c.username === 'You')?.id;
+  const handleResetVote = (questionId: number) => {
+    setQuestions((prevQuestions) =>
+      prevQuestions.map((q) => {
+        if (q.id === questionId && q.userVoted) {
+          const originalVote = q.userVoted;
+          const userCommentId = q.comments.find(c => c.username === user.username || c.username === 'You')?.id;
 
           return {
-            ...d,
-            yesVotes: Math.max(0, d.yesVotes - (originalVote === 'YES' ? 1 : 0)),
-            noVotes: Math.max(0, d.noVotes - (originalVote === 'NO' ? 1 : 0)),
+            ...q,
+            yes_count: Math.max(0, q.yes_count - (originalVote === 'YES' ? 1 : 0)),
+            no_count: Math.max(0, q.no_count - (originalVote === 'NO' ? 1 : 0)),
             userVoted: null,
-            comments: d.comments.filter(c => c.id !== userCommentId)
+            comments: q.comments.filter(c => c.id !== userCommentId)
           };
         }
-        return d;
+        return q;
       })
     );
+
+    setUser((prev) => ({
+      ...prev,
+      total_votes: Math.max(0, prev.total_votes - 1)
+    }));
   };
 
   // Perform Daily Streak Claim Energy
@@ -211,7 +284,7 @@ export default function App() {
     const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const currentDayName = daysOfWeek[new Date().getDay()];
 
-    setProfile((prev) => {
+    setUser((prev) => {
       const nextStreak = prev.streak + 1;
       const updatedHistory = { ...prev.streakHistory, [currentDayName]: true };
 
@@ -229,23 +302,61 @@ export default function App() {
         streakHistory: updatedHistory
       };
     });
+
+    const newNotif: AppNotification = {
+      id: `n_claim_${Date.now()}`,
+      title: "Energy Reactor Engaged",
+      body: "Streak status has been secured successfully via claim cell. +1 Flame!",
+      timestamp: "Just now",
+      unread: true,
+      type: "info"
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
   };
 
   // Update other dynamic profile settings like badge title
-  const handleUpdateProfile = (updated: Partial<UserProfile>) => {
-    setProfile((prev) => ({ ...prev, ...updated }));
+  const handleUpdateUser = (updated: Partial<TelegramUser>) => {
+    setUser((prev) => ({ ...prev, ...updated }));
+  };
+
+  // Admin Question toggle/update handler
+  const handleUpdateQuestions = (updated: Question[]) => {
+    setQuestions(updated);
   };
 
   // Complete data reset handler
   const handleResetAllData = () => {
-    localStorage.removeItem('streak_debates');
-    localStorage.removeItem('streak_user_profile');
-    localStorage.removeItem('streak_leaderboard');
-    setDebates(INITIAL_DEBATES);
-    setProfile(DEFAULT_USER_PROFILE);
-    setLeaderboard(DEFAULT_LEADERBOARD);
+    localStorage.removeItem('streak_questions');
+    localStorage.removeItem('streak_user');
+    localStorage.removeItem('streak_leaderboard_daily');
+    localStorage.removeItem('streak_leaderboard_alltime');
+    localStorage.removeItem('streak_notifications');
+    setQuestions(INITIAL_QUESTIONS);
+    setUser(DEFAULT_USER);
+    setLeaderboardDaily(DEFAULT_LEADERBOARD_DAILY);
+    setLeaderboardAllTime(DEFAULT_LEADERBOARD_ALLTIME);
+    setNotifications(INITIAL_NOTIFICATIONS);
     setActiveTab('home');
   };
+
+  // Notifications toggle helpers
+  const handleMarkNotificationRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, unread: false } : n))
+    );
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    setNotifications((prev) =>
+      prev.map((n) => ({ ...n, unread: false }))
+    );
+  };
+
+  const unreadNotificationsCount = notifications.filter((n) => n.unread).length;
+
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
 
   return (
     <div className="relative min-h-screen bg-[#0e0e0e] text-[#e5e2e1] flex flex-col">
@@ -257,7 +368,25 @@ export default function App() {
       <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0 opacity-15" />
 
       {/* Structured top header shell */}
-      <Header streak={profile.streak} onProfileClick={() => setActiveTab('profile')} />
+      <Header 
+        streak={user.streak} 
+        onProfileClick={() => setActiveTab('profile')} 
+        onNotificationsClick={() => setShowNotifications(true)}
+        unreadCount={unreadNotificationsCount}
+      />
+
+      {/* Sliding Notifications modal overlay */}
+      <AnimatePresence>
+        {showNotifications && (
+          <NotificationsPanel
+            isOpen={showNotifications}
+            onClose={() => setShowNotifications(false)}
+            notifications={notifications}
+            onMarkRead={handleMarkNotificationRead}
+            onMarkAllRead={handleMarkAllNotificationsRead}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Primary app content wrapper */}
       <main className="flex-1 w-full max-w-lg mx-auto pt-24 pb-28 px-6 z-10 relative overflow-x-hidden">
@@ -272,32 +401,34 @@ export default function App() {
           >
             {activeTab === 'home' && (
               <HomeTab
-                debates={debates}
-                username={profile.username}
+                questions={questions}
+                user={user}
                 onVote={handleVote}
                 onResetVote={handleResetVote}
               />
             )}
 
             {activeTab === 'history' && (
-              <HistoryTab debates={debates} />
+              <HistoryTab questions={questions} />
             )}
 
             {activeTab === 'ranks' && (
               <RanksTab
-                leaderboard={leaderboard}
-                streak={profile.streak}
-                lastClaimedBonus={profile.lastClaimedBonus}
+                leaderboardDaily={leaderboardDaily}
+                leaderboardAllTime={leaderboardAllTime}
+                streak={user.streak}
+                lastClaimedBonus={user.lastClaimedBonus}
                 onClaimBonus={handleClaimBonus}
-                streakHistory={profile.streakHistory}
+                streakHistory={user.streakHistory}
               />
             )}
 
             {activeTab === 'profile' && (
               <ProfileTab
-                profile={profile}
-                debates={debates}
-                onUpdateProfile={handleUpdateProfile}
+                user={user}
+                questions={questions}
+                onUpdateUser={handleUpdateUser}
+                onUpdateQuestions={handleUpdateQuestions}
                 onResetAllData={handleResetAllData}
               />
             )}

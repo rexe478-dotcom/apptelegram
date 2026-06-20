@@ -7,17 +7,34 @@ export interface Comment {
   avatar: string;
 }
 
-export interface Debate {
+export interface Question {
   id: number;
-  category: string;
   question: string;
-  image: string;
-  status: 'live' | 'completed';
-  yesVotes: number;
-  noVotes: number;
+  active: boolean;
+  yes_count: number;
+  no_count: number;
+  expires_at: string; // ISO string or timestamp
+  category: string;
+  image?: string;
   userVoted?: 'YES' | 'NO' | null;
-  date: string;
   comments: Comment[];
+}
+
+export interface Vote {
+  user_id: string;
+  question_id: number;
+  choice: 'YES' | 'NO';
+  comment?: string;
+}
+
+export interface TelegramUser {
+  telegram_id: string;
+  username: string;
+  streak: number;
+  total_votes: number;
+  badge: string;
+  lastClaimedBonus?: string;
+  streakHistory: { [key: string]: boolean };
 }
 
 export interface LeaderboardEntry {
@@ -29,12 +46,12 @@ export interface LeaderboardEntry {
   isCurrentUser?: boolean;
 }
 
-export interface UserProfile {
-  username: string;
-  streak: number;
-  lastClaimedBonus?: string; // Date string
-  badge: string; // Title like 'Cyber Rebel'
-  avatarColor: string; // hex or class
-  votesCount: number;
-  streakHistory: { [key: string]: boolean }; // e.g. {'Monday': true}
+export interface AppNotification {
+  id: string;
+  title: string;
+  body: string;
+  timestamp: string;
+  unread: boolean;
+  type: 'info' | 'alert' | 'streak';
 }
+

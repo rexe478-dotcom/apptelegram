@@ -1,15 +1,15 @@
-import { Debate, LeaderboardEntry, UserProfile } from './types';
+import { Question, LeaderboardEntry, TelegramUser, AppNotification } from './types';
 
-export const INITIAL_DEBATES: Debate[] = [
+export const INITIAL_QUESTIONS: Question[] = [
   {
     id: 1,
     category: "Education",
     question: "Should schools reduce homework?",
     image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCvyyJTso4wAAxrQXOYQaeldl2x-p8BaAgqPEkJVUGwOiHF5ynjZRuZ5rREDYsoEspFYPt8QpPI3wtCNLG9C03Tsa4IJx9S9sKibKm7DKV1A1xTywaa4HDDj9UbWBDc-6s8AMcRjx-LDtgm0kYSQ6gRiRmkNlW6XjZZQgomqZ1cvUYpBp-tjBNYkoFAp0PL-jXM2urEqcxfVUzIS78LpQZ8x94YtKKyd-KkynF8GohEC9qVnb9zl2M8nODgGV8aZcVapT8luvyzTg",
-    status: "live",
-    yesVotes: 8092,
-    noVotes: 4358,
-    date: "JUN 19, 2026",
+    active: true,
+    yes_count: 8092,
+    no_count: 4358,
+    expires_at: new Date(Date.now() + 7200000).toISOString(), // 2 hours from now
     comments: [
       {
         id: "c1_1",
@@ -50,10 +50,10 @@ export const INITIAL_DEBATES: Debate[] = [
     category: "Technology & AI",
     question: "Should AI be given the status of digital citizens?",
     image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80",
-    status: "live",
-    yesVotes: 3209,
-    noVotes: 7302,
-    date: "JUN 19, 2026",
+    active: true,
+    yes_count: 3209,
+    no_count: 7302,
+    expires_at: new Date(Date.now() + 86400000).toISOString(), // 24 hours from now
     comments: [
       {
         id: "c2_1",
@@ -86,10 +86,10 @@ export const INITIAL_DEBATES: Debate[] = [
     category: "Gaming & Esports",
     question: "Will neural interfaces replace keyboard and controllers?",
     image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=600&q=80",
-    status: "completed",
-    yesVotes: 11402,
-    noVotes: 2311,
-    date: "JUN 18, 2026",
+    active: false,
+    yes_count: 11402,
+    no_count: 2311,
+    expires_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
     comments: [
       {
         id: "c3_1",
@@ -114,10 +114,10 @@ export const INITIAL_DEBATES: Debate[] = [
     category: "Space Colonies",
     question: "Should Mars colonization be funded by planetary taxes?",
     image: "https://images.unsplash.com/photo-1612892483236-42d68a57623d?auto=format&fit=crop&w=600&q=80",
-    status: "completed",
-    yesVotes: 5120,
-    noVotes: 14209,
-    date: "JUN 15, 2026",
+    active: false,
+    yes_count: 5120,
+    no_count: 14209,
+    expires_at: new Date(Date.now() - 345600000).toISOString(), // 4 days ago
     comments: [
       {
         id: "c4_1",
@@ -139,25 +139,30 @@ export const INITIAL_DEBATES: Debate[] = [
   }
 ];
 
-export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
+export const DEFAULT_LEADERBOARD_DAILY: LeaderboardEntry[] = [
   { username: "@PixelMaster", streak: 12, rank: 1, tier: "Cyber Elite", avatar: "person" },
   { username: "@AIGuru", streak: 10, rank: 2, tier: "Cyber Elite", avatar: "person" },
   { username: "@StudyBug", streak: 9, rank: 3, tier: "Arcade Master", avatar: "person" },
-  { username: "@NeonNoodle", streak: 8, rank: 4, tier: "Arcade Master", avatar: "person" },
-  { username: "You", streak: 7, rank: 5, tier: "Arcade Master", avatar: "person", isCurrentUser: true },
-  { username: "@BinaryRebel", streak: 6, rank: 6, tier: "Arcade Master", avatar: "person" },
-  { username: "@GlitchSeeker", streak: 5, rank: 7, tier: "Grid Runner", avatar: "person" },
-  { username: "@ByteSlayer", streak: 4, rank: 8, tier: "Grid Runner", avatar: "person" },
-  { username: "@SynthWave", streak: 3, rank: 9, tier: "Rookie Player", avatar: "person" }
+  { username: "You", streak: 7, rank: 4, tier: "Arcade Master", avatar: "person", isCurrentUser: true },
+  { username: "@BinaryRebel", streak: 6, rank: 5, tier: "Arcade Master", avatar: "person" },
+  { username: "@GlitchSeeker", streak: 5, rank: 6, tier: "Grid Runner", avatar: "person" }
 ];
 
-export const DEFAULT_USER_PROFILE: UserProfile = {
+export const DEFAULT_LEADERBOARD_ALLTIME: LeaderboardEntry[] = [
+  { username: "@VoidRunner", streak: 142, rank: 1, tier: "VOID Protocol", avatar: "person" },
+  { username: "@PixelMaster", streak: 112, rank: 2, tier: "Cyber Elite", avatar: "person" },
+  { username: "@BitLegend", streak: 89, rank: 3, tier: "Bitwise Legend", avatar: "person" },
+  { username: "@StudyBug", streak: 45, rank: 4, tier: "Arcade Master", avatar: "person" },
+  { username: "You", streak: 7, rank: 5, tier: "Arcade Master", avatar: "person", isCurrentUser: true }
+];
+
+export const DEFAULT_USER: TelegramUser = {
+  telegram_id: "582910482",
   username: "You",
   streak: 7,
   lastClaimedBonus: undefined,
   badge: "Arcade Master",
-  avatarColor: "text-primary-container",
-  votesCount: 42,
+  total_votes: 42,
   streakHistory: {
     "Mon": true,
     "Tue": true,
@@ -168,3 +173,31 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
     "Sun": false
   }
 };
+
+export const INITIAL_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: "n1",
+    title: "New Vote Active!",
+    body: "Sector: 'Should schools reduce homework?' is now open for synapses.",
+    timestamp: "10m ago",
+    unread: true,
+    type: "alert"
+  },
+  {
+    id: "n2",
+    title: "Streak reminder",
+    body: "Reinforce your streak today to avoid 2D flame degradation!",
+    timestamp: "2h ago",
+    unread: true,
+    type: "streak"
+  },
+  {
+    id: "n3",
+    title: "Level Up!",
+    body: "Congratulations! You have been promoted to Tier: 'Arcade Master'.",
+    timestamp: "1d ago",
+    unread: false,
+    type: "info"
+  }
+];
+
