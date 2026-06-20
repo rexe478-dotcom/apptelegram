@@ -1,0 +1,125 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Hanken+Grotesk:wght@300;400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-body: 'Hanken Grotesk', sans-serif;
+
+  /* Theme colors matching Cyberpunk Arcade UI */
+  --color-background-custom: #0e0e0e;
+  --color-surface: #131313;
+  --color-surface-dim: #131313;
+  --color-surface-bright: #393939;
+  --color-surface-container-lowest: #0e0e0e;
+  --color-surface-container-low: #1c1b1b;
+  --color-surface-container: #201f1f;
+  --color-surface-container-high: #2a2a2a;
+  --color-surface-container-highest: #353534;
+  --color-on-surface: #e5e2e1;
+  --color-on-surface-variant: #baccb0;
+  --color-inverse-surface: #e5e2e1;
+  --color-inverse-on-surface: #313030;
+  --color-outline: #85967c;
+  --color-outline-variant: #3c4b35;
+  --color-surface-tint: #2ae500;
+  --color-primary-container: #39ff14;
+  --color-on-primary-container: #107100;
+  --color-inverse-primary: #106e00;
+  --color-secondary: #ffabf3;
+  --color-on-secondary: #5b005b;
+  --color-secondary-container: #fe00fe;
+  --color-on-secondary-container: #500050;
+  --color-tertiary: #fff9f0;
+  --color-on-tertiary: #3a3000;
+  --color-tertiary-container: #ffdb40;
+  --color-on-tertiary-container: #736000;
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-primary-fixed: #79ff5b;
+  --color-primary-fixed-dim: #2ae500;
+  --color-on-primary-fixed: #022100;
+  --color-on-primary-fixed-variant: #095300;
+  --color-secondary-fixed: #ffd7f5;
+  --color-secondary-fixed-dim: #ffabf3;
+  --color-on-secondary-fixed: #380038;
+  --color-on-secondary-fixed-variant: #810081;
+  --color-tertiary-fixed: #ffe16d;
+  --color-tertiary-fixed-dim: #e9c400;
+  --color-on-tertiary-fixed: #221b00;
+  --color-on-tertiary-fixed-variant: #544600;
+  --color-background: #131313;
+  --color-on-background: #e5e2e1;
+  --color-surface-variant: #353534;
+}
+
+@layer utilities {
+  .neo-glow-primary {
+    box-shadow: 0 0 15px rgba(57, 255, 20, 0.15);
+  }
+
+  .neo-glow-secondary {
+    box-shadow: 0 0 15px rgba(254, 0, 254, 0.15);
+  }
+
+  .border-thin {
+    border-width: 1px;
+  }
+
+  .crt-scanline {
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.05) 50%);
+    background-size: 100% 2px;
+    pointer-events: none;
+  }
+
+  .active-scale:active {
+    transform: scale(0.98);
+  }
+
+  .gradient-mask {
+    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  }
+
+  /* Material symbol configuration */
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+body {
+  background-color: #0e0e0e;
+  color: #e5e2e1;
+  -webkit-tap-highlight-color: transparent;
+  font-family: 'Space Grotesk', sans-serif;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Custom Scrollbar - Cyberpunk theme */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #0e0e0e;
+}
+::-webkit-scrollbar-thumb {
+  background: #201f1f;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #39ff14;
+}

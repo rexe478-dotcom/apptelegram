@@ -1,0 +1,6 @@
+{
+  "name": "Streak",
+  "description": "A minimalist cyberpunk debate and voting application with streak trackers, rank tier leaderboards, and an interactive daily activity feed.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
