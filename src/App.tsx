@@ -11,6 +11,8 @@ import NotificationsPanel from './components/NotificationsPanel';
 
 import { INITIAL_QUESTIONS, DEFAULT_LEADERBOARD_DAILY, DEFAULT_LEADERBOARD_ALLTIME, DEFAULT_USER, INITIAL_NOTIFICATIONS } from './data';
 import { Question, LeaderboardEntry, TelegramUser, Comment, AppNotification } from './types';
+import { isSupabaseConfigured } from './lib/supabase';
+import { fetchUser, upsertUser, rowToUser } from './lib/db';
 
 export default function App() {
   // Navigation tabs routing
@@ -94,14 +96,32 @@ export default function App() {
       try {
         webapp.ready();
         webapp.expand();
-        // If Telegram user exists, inject details
+        // If Telegram user exists, inject details and sync with Supabase
         const tgUser = webapp.initDataUnsafe?.user;
         if (tgUser) {
+          const tgId = String(tgUser.id);
+          const tgName = tgUser.username ? `@${tgUser.username}` : `${tgUser.first_name} ${tgUser.last_name || ''}`.trim();
+
           setUser((prev) => ({
             ...prev,
-            telegram_id: String(tgUser.id),
-            username: tgUser.username ? `@${tgUser.username}` : `${tgUser.first_name} ${tgUser.last_name || ''}`.trim()
+            telegram_id: tgId,
+            username: tgName
           }));
+
+          // Load cloud profile from Supabase (if configured)
+          if (isSupabaseConfigured) {
+            fetchUser(tgId).then((row) => {
+              if (row) {
+                // Merge cloud data into local state (cloud wins for persistent fields)
+                setUser((prev) => ({ ...prev, ...rowToUser(row) }));
+                console.log('[DB] User profile loaded from Supabase');
+              } else {
+                // First-time user — push local state to cloud
+                upsertUser({ telegram_id: tgId, username: tgName, streak: 0, total_votes: 0, badge: 'Rookie Pixel', streakHistory: {} });
+                console.log('[DB] New user created in Supabase');
+              }
+            });
+          }
         }
       } catch (e) {
         console.error("Failed to initialize Telegram WebApp SDK:", e);
@@ -127,6 +147,19 @@ export default function App() {
     setLeaderboardDaily(updateLeaderboard);
     setLeaderboardAllTime(updateLeaderboard);
   }, [user.username, user.streak, user.badge]);
+
+  // ─── Debounced Supabase sync: push user changes to cloud ────────
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user.telegram_id) return;
+
+    const timer = setTimeout(() => {
+      upsertUser(user).then((ok) => {
+        if (ok) console.log('[DB] User synced to Supabase');
+      });
+    }, 1500); // 1.5s debounce to batch rapid state changes
+
+    return () => clearTimeout(timer);
+  }, [user]);
 
   // Cyber Background Pixel particle Drawer
   useEffect(() => {
